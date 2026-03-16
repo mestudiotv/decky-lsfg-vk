@@ -22,15 +22,20 @@ class DllDetectionService(BaseService):
         """Check if Lossless Scaling DLL is available at the expected paths
         
         Search order:
-        1. LSFG_DLL_PATH environment variable
-        2. XDG_DATA_HOME Steam directory
-        3. HOME/.local/share Steam directory  
-        4. All Steam library folders (including SD cards)
+        1. Configured DLL path from plugin config (global.dll)
+        2. LSFG_DLL_PATH environment variable
+        3. XDG_DATA_HOME Steam directory
+        4. HOME/.local/share Steam directory  
+        5. All Steam library folders (including SD cards)
         
         Returns:
             DllDetectionResponse with detection status and path information
         """
         try:
+            configured_path = self._check_configured_dll_path()
+            if configured_path:
+                return configured_path
+
             dll_path = self._check_env_dll_path()
             if dll_path:
                 return dll_path
@@ -54,7 +59,7 @@ class DllDetectionService(BaseService):
                 "message": "Lossless Scaling DLL not found in expected locations",
                 "error": None
             }
-            
+
         except Exception as e:
             error_msg = f"Error checking Lossless Scaling DLL: {str(e)}"
             self.log.error(error_msg)
@@ -65,6 +70,38 @@ class DllDetectionService(BaseService):
                 "message": None,
                 "error": str(e)
             }
+
+    def _check_configured_dll_path(self) -> DllDetectionResponse | None:
+        """Check custom DLL path from plugin config.
+
+        Returns:
+            DllDetectionResponse if found, None otherwise
+        """
+        if not self.config_file_path.exists():
+            return None
+
+        try:
+            from .config_schema import ConfigurationManager
+
+            content = self.config_file_path.read_text(encoding='utf-8')
+            profile_data = ConfigurationManager.parse_toml_content_multi_profile(content)
+            configured_path = profile_data.get("global_config", {}).get("dll", "")
+
+            if configured_path and configured_path.strip():
+                dll_path_obj = Path(configured_path.strip())
+                if dll_path_obj.exists():
+                    self.log.info(f"Found DLL via configured path: {dll_path_obj}")
+                    return {
+                        "detected": True,
+                        "path": str(dll_path_obj),
+                        "source": "plugin configuration (global.dll)",
+                        "message": None,
+                        "error": None
+                    }
+        except Exception as e:
+            self.log.warning(f"Failed to check configured DLL path: {str(e)}")
+
+        return None
     
     def _check_env_dll_path(self) -> DllDetectionResponse | None:
         """Check LSFG_DLL_PATH environment variable
