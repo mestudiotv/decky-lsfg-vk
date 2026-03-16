@@ -1,4 +1,4 @@
-import { PanelSectionRow, ToggleField, SliderField, ButtonItem } from "@decky/ui";
+import { PanelSectionRow, ToggleField, SliderField, ButtonItem, Field, TextField } from "@decky/ui";
 import { useState, useEffect } from "react";
 import { RiArrowDownSFill, RiArrowUpSFill } from "react-icons/ri";
 import { ConfigurationData } from "../config/configSchema";
@@ -113,6 +113,21 @@ export function ConfigurationSection({
 
       {!configCollapsed && (
         <>
+          <PanelSectionRow>
+            <Field
+              label="Lossless.dll Path"
+              description="Optional custom path to Lossless.dll. If set and valid, this is used before Steam library detection."
+              childrenLayout="below"
+              childrenContainerWidth="max"
+            >
+              <TextField
+                value={config.dll || ""}
+                onChange={(e) => onConfigChange("dll", e?.target?.value || "")}
+                style={{ width: "100%" }}
+              />
+            </Field>
+          </PanelSectionRow>
+
           <PanelSectionRow>
             <SliderField
               label={`Flow Scale (${Math.round(config.flow_scale * 100)}%)`}
